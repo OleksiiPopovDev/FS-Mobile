@@ -1,65 +1,94 @@
-import React, {useEffect} from "react";
-import Gradient from "../assets/Icons/Gradient";
-import { Box } from "@/components/ui/box";
-import { ScrollView } from "react-native";
-import { Text } from "@/components/ui/text";
-import {Button, ButtonText} from "@/components/ui/button";
+import React, {useEffect, useState} from 'react';
+import {Alert, Button, Text, View} from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import {makeRedirectUri} from "expo-auth-session";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
+import axios from "axios";
+import * as AuthSession from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export default function Home() {
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: '24231477460-tjd33be9s06vauu53jpmuq1mj4e3jd8b.apps.googleusercontent.com',
-    scopes: ['openid', 'profile', 'email'],
-    redirectUri: makeRedirectUri(),
-  });
+export default function App() {
+    const [userInfo, setUserInfo] = useState(null);
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        iosClientId: '24231477460-sjpo6naep0bdg418vurk5ei34gfkj4s8.apps.googleusercontent.com',
+        androidClientId: '24231477460-pa0pc1ontiffp97tpdfljl9c4ceh656q.apps.googleusercontent.com',
+        webClientId: '24231477460-tjd33be9s06vauu53jpmuq1mj4e3jd8b.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+    });
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      (async () => {
-        try {
-          // Приклад: надсилаємо accessToken на бекенд для обробки (можна змінити URL та формат запиту)
-          const res = await axios.post('https://api.fitness-server.local.com/api/social/callback/google', {
-            provider: 'google',
-            access_token: authentication?.accessToken,
-          });
-          // Зберігаємо виданий бекендом токен (якщо він повертається)
-          await AsyncStorage.setItem('authToken', res.data.token);
-          // Тут можна виконати навігацію до головного екрана застосунку
-          // Наприклад: router.push('/home') або інша логіка
-        } catch (error) {
-          console.error(error);
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const {authentication} = response;
+            const {code} = response.params;
+            console.log(code);
+            console.log(authentication);
+
+            if (!code) {
+                Alert.alert('Помилка', 'Authorization code не отримано');
+                return;
+            }
+            const url = `http://127.0.0.48/api/social/callback/ggl-json/${authentication?.accessToken}`
+            console.log('FS Request: ', url);
+            axios.get(url)
+                .then(async (res) => {
+                    const token = res.data.data;
+                    console.log('Token: ', token);
+                    const userInfo = await axios.get('http://127.0.0.48/api/user/info', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    setUserInfo(userInfo.data.data)
+                    console.log(JSON.stringify(userInfo));
+
+                }, (err) => {
+                    console.error('Помилка авторизації на сервері:', err.message());
+                    Alert.alert('Помилка', 'Не вдалося авторизуватися через сервер.');
+                }).catch((err) => console.log(err));
         }
-      })();
-    }
-  }, [response]);
+    }, [response]);
 
-  return (
-    <Box className="flex-1 bg-black h-[100vh]">
-      <ScrollView
-        style={{ height: "100%" }}
-        contentContainerStyle={{ flexGrow: 1 }}
-      >
-        <Box className="absolute h-[500px] w-[500px] lg:w-[700px] lg:h-[700px]">
-          <Gradient />
-        </Box>
-        <Box className="flex flex-1 items-center my-16 mx-5 lg:my-24 lg:mx-32">
-          <Box className="gap-10 base:flex-col sm:flex-row justify-between sm:w-[80%] md:flex-1">
-            <Button
-                onPress={() => promptAsync({ useProxy: true })}
-                disabled={!request}
-            >
-              <ButtonText>Авторизуватися через Google</ButtonText>
-            </Button>
-          </Box>
-        </Box>
-      </ScrollView>
-    </Box>
-  );
+    async function logout() {
+        setUserInfo(null);
+    }
+
+    async function test() {
+        const url = 'http://127.0.0.48/api/social/links';
+        // const url = 'http://10.0.2.2/api/social/links';
+        // const url = 'https://api.fitness-server.local.com/api/social/links';
+        // const url = 'https://server.fitness/api/social/links';
+        console.log('FS Request: ', url);
+        try {
+            axios.get(url)
+                .then((res) => console.log(JSON.stringify(res)))
+                .catch((err) => console.error(err));
+        } catch (error) {
+            console.error('Помилка авторизації на сервері:', error.message());
+            Alert.alert('Помилка', 'Не вдалося авторизуватися через сервер.');
+        }
+    }
+
+
+    return (
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+            {userInfo ? (
+                <View>
+                    <Text>Welcome, {userInfo.first_name} {userInfo.last_name}!</Text>
+                    <Text>Activity: {userInfo.activity}!</Text>
+                    <Text>Role: {userInfo.role}!</Text>
+                    <Text>Email: {userInfo.email}</Text>
+                </View>
+            ) : (
+                <Button
+
+                    disabled={!request}
+                    title="Sign in with Google"
+                    onPress={() => promptAsync()}
+                />
+            )}
+            <Button title="Test" onPress={() => test()}/>
+            <Button title="Log Out!" onPress={() => logout()}/>
+        </View>
+    );
 }

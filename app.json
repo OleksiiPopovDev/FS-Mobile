@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "fitness-server",
+    "name": "Fitness Server",
     "slug": "FitnessServer",
     "owner": "popov.aleksei",
     "version": "1.0.0",
@@ -11,14 +11,27 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.fitness.server.dev",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.fitness.server.dev",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "edgeToEdgeEnabled": true,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "fitness-server"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -39,6 +52,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f94525a2-fd28-4e7b-ae0a-5def42343519"
+      }
     }
   }
 }

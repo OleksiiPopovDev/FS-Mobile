@@ -2,14 +2,19 @@
 
 # dependencies
 node_modules/
+android/
+ios/
 
 # Expo
 .expo/
+.idea/
+.vscode/
 dist/
 web-build/
 expo-env.d.ts
 
 # Native
+.kotlin/
 *.orig.*
 *.jks
 *.p8
