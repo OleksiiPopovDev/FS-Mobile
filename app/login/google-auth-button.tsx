@@ -1,21 +1,26 @@
 import React, {useEffect, useState} from 'react';
-import {ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity,} from 'react-native';
+import {ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity} from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import axios from 'axios';
 import {login} from "@/i18n/login";
+import * as AuthSession from 'expo-auth-session';
 
 export default function GoogleAuthButton({onToken}) {
     const [loading, setLoading] = useState(false);
+    const redirectUri = AuthSession.makeRedirectUri();
+
+    console.log(redirectUri, Platform.OS, 1);
 
     const [request, response, promptAsync] = Google.useAuthRequest({
         iosClientId: process.env.EXPO_PUBLIC_IOS_CLIENT_ID,
         androidClientId: process.env.EXPO_PUBLIC_ANDROID_CLIENT_ID,
         webClientId: process.env.EXPO_PUBLIC_WEB_CLIENT_ID,
         scopes: ['profile', 'email'],
+        redirectUri: redirectUri
     });
 
     useEffect(() => {
-        console.log(request?.redirectUri, Platform.OS);
+        console.log(request?.redirectUri, Platform.OS, 2);
         if (response?.type === 'success') {
             const {authentication} = response;
             const {code} = response.params;
@@ -26,14 +31,15 @@ export default function GoogleAuthButton({onToken}) {
             }
 
             const url = `http://127.0.0.48/api/social/callback/ggl-json/${authentication?.accessToken}`;
-
+            console.log(`FS Request: ${url}`);
             axios
                 .get(url)
                 .then(async (res) => {
                     console.log(res.data.data);
                     onToken(res.data.data);
                 })
-                .catch(() => {
+                .catch((err) => {
+                    console.error(err);
                     alert('Не вдалося авторизуватись через сервер');
                 })
                 .finally(() => setLoading(false));
