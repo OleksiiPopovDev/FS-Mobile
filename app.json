@@ -53,7 +53,22 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-web-browser",
+      "@morrowdigital/watermelondb-expo-plugin",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.8.22",
+            "packagingOptions": {
+              "pickFirst": [
+                "**/libc++_shared.so"
+              ]
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

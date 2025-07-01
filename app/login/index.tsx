@@ -1,9 +1,12 @@
 import React, {useState} from 'react';
-import {Image, ImageBackground, Linking, StyleSheet, Text, TouchableOpacity, View,} from 'react-native';
+import {Button, Image, ImageBackground, Linking, StyleSheet, Text, TouchableOpacity, View,} from 'react-native';
 import GoogleAuthButton from "@/app/login/google-auth-button";
 import {login} from "@/i18n/login";
 import {getLocales} from "expo-localization";
 import axios from "axios";
+import {UserRepository} from "@/app/database/repository/user.repository";
+import User from "@/app/database/model/users.model";
+import * as FileSystem from 'expo-file-system';
 
 
 export default function Login() {
@@ -11,6 +14,18 @@ export default function Login() {
     const [userInfo, setUserInfo] = useState(null);
 
     login.locale = locale;
+
+    const resetDatabase = async () => {
+        const dbName = 'FitnessServer';
+        const dbPath = `${FileSystem.documentDirectory}SQLite/${dbName}`;
+
+        try {
+            await FileSystem.deleteAsync(dbPath);
+            console.log(`✅ SQLite база ${dbName} успішно видалена`);
+        } catch (error) {
+            console.error(`❌ Не вдалося видалити базу ${dbName}`, error);
+        }
+    };
 
     const handleToken = async (token: string) => {
         console.log("Отримано токен від дочірнього компонента:", token);
@@ -20,6 +35,24 @@ export default function Login() {
             },
         });
 
+        console.log(apiResponse.data.data);
+        const userRepository = new UserRepository();
+        await userRepository.createUser({
+            token: token,
+            userId: apiResponse.data.data.id ?? 0,
+            email: apiResponse.data.data.email,
+            firstName: apiResponse.data.data.first_name,
+            lastName: apiResponse.data.data.last_name,
+            gender: apiResponse.data.data.gender,
+            birthday: apiResponse.data.data.birthday,
+        } as User)
+
+        const users = await userRepository.getAllUsers();
+
+        console.log(users.length);
+        users.forEach((user: User) => {
+            console.log(user);
+        })
         setUserInfo(apiResponse.data.data);
         console.log(userInfo);
     };
@@ -34,7 +67,7 @@ export default function Login() {
                 <Image source={require('assets/images/FS-logo-d.png')} style={styles.logo}/>
 
                 <GoogleAuthButton onToken={handleToken}/>
-
+                <Button title="Reset DB" onPress={resetDatabase}/>
                 <Text style={styles.noAccount}>{login.t('no_account')}</Text>
                 <Text style={styles.info}>{login.t('no_account_answer')}</Text>
 
