@@ -1,19 +1,22 @@
 import React, {useState} from 'react';
-import {Button, Image, ImageBackground, Linking, StyleSheet, Text, TouchableOpacity, View,} from 'react-native';
+import {Button, Image, ImageBackground, Linking, StyleSheet, Text, TouchableOpacity, View, Alert} from 'react-native';
 import GoogleAuthButton from "@/app/login/google-auth-button";
 import {login} from "@/i18n/login";
 import {getLocales} from "expo-localization";
 import axios from "axios";
-import {UserRepository} from "@/app/database/repository/user.repository";
-import User from "@/app/database/model/users.model";
 import * as FileSystem from 'expo-file-system';
 
+interface LoginProps {
+    onLoginSuccess: (userData: any) => void;
+}
 
-export default function Login() {
+export default function Login({ onLoginSuccess }: LoginProps) {
     const [locale, setLocale] = useState(getLocales()[0].languageCode ?? 'en');
-    const [userInfo, setUserInfo] = useState(null);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     login.locale = locale;
+
+    console.log("🔍 Login компонент ініціалізований, onLoginSuccess:", typeof onLoginSuccess);
 
     const resetDatabase = async () => {
         const dbName = 'FitnessServer';
@@ -28,33 +31,69 @@ export default function Login() {
     };
 
     const handleToken = async (token: string) => {
-        console.log("Отримано токен від дочірнього компонента:", token);
-        const apiResponse = await axios.get('http://127.0.0.48/api/user/info', {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        try {
+            setIsLoggingIn(true);
+            console.log("🔑 handleToken викликано з токеном:", token);
+            console.log("🔍 onLoginSuccess доступно?", typeof onLoginSuccess);
+            
+            // Отримуємо дані користувача з сервера
+            const apiResponse = await axios.get('http://127.0.0.48/api/user/info', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
 
-        console.log(apiResponse.data.data);
-        const userRepository = new UserRepository();
-        await userRepository.createUser({
-            token: token,
-            userId: apiResponse.data.data.id ?? 0,
-            email: apiResponse.data.data.email,
-            firstName: apiResponse.data.data.first_name,
-            lastName: apiResponse.data.data.last_name,
-            gender: apiResponse.data.data.gender,
-            birthday: apiResponse.data.data.birthday,
-        } as User)
+            const userData = apiResponse.data.data;
+            console.log("👤 Отримано дані користувача:", userData);
 
-        const users = await userRepository.getAllUsers();
+            // Додаємо токен до userData для збереження
+            const userDataWithToken = {
+                ...userData,
+                authToken: token // Зберігаємо токен разом з даними користувача
+            };
 
-        console.log(users.length);
-        users.forEach((user: User) => {
-            console.log(user);
-        })
-        setUserInfo(apiResponse.data.data);
-        console.log(userInfo);
+            // КРИТИЧНО ВАЖЛИВО: Викликаємо onLoginSuccess
+            console.log("🎉 ВИКЛИКАЄМО onLoginSuccess з userData:", userData.first_name, userData.last_name);
+            
+            if (typeof onLoginSuccess === 'function') {
+                console.log("✅ onLoginSuccess - це функція, викликаємо...");
+                onLoginSuccess(userDataWithToken);
+                console.log("✅ onLoginSuccess викликано успішно!");
+            } else {
+                console.error("❌ onLoginSuccess не є функцією:", typeof onLoginSuccess);
+            }
+            
+        } catch (error) {
+            console.error("❌ Помилка авторизації:", error);
+            Alert.alert(
+                'Помилка авторизації',
+                'Не вдалося увійти в систему. Перевірте з\'єднання та спробуйте ще раз.',
+                [{ text: 'OK' }]
+            );
+        } finally {
+            setIsLoggingIn(false);
+        }
+    };
+
+    // Тестова функція для швидкого тестування
+    const testLogin = () => {
+        console.log("🧪 Тестуємо логін з фейковими даними");
+        const fakeUserData = {
+            id: 1,
+            email: "test@test.com",
+            first_name: "Тест",
+            last_name: "Користувач",
+            gender: "unknown",
+            birthday: "2025-07-01",
+            authToken: "fake_token_123"
+        };
+        
+        if (typeof onLoginSuccess === 'function') {
+            console.log("🧪 Викликаємо onLoginSuccess з тестовими даними");
+            onLoginSuccess(fakeUserData);
+        } else {
+            console.error("❌ onLoginSuccess не доступний для тестування");
+        }
     };
 
     return (
@@ -66,8 +105,13 @@ export default function Login() {
             <View style={[styles.container]}>
                 <Image source={require('assets/images/FS-logo-d.png')} style={styles.logo}/>
 
-                <GoogleAuthButton onToken={handleToken}/>
+                <GoogleAuthButton onToken={handleToken} isLoading={isLoggingIn} />
+                
                 <Button title="Reset DB" onPress={resetDatabase}/>
+                
+                {/* Тестова кнопка */}
+                <Button title="🧪 Test Login" onPress={testLogin} color="#28a745" />
+                
                 <Text style={styles.noAccount}>{login.t('no_account')}</Text>
                 <Text style={styles.info}>{login.t('no_account_answer')}</Text>
 
