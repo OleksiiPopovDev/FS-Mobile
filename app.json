@@ -13,8 +13,11 @@
       "bundleIdentifier": "com.fitness.server.dev",
       "supportsTablet": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIViewControllerBasedStatusBarAppearance": false,
+        "UIStatusBarHidden": false
+      },
+      "userInterfaceStyle": "light"
     },
     "android": {
       "package": "com.fitness.server.dev",
